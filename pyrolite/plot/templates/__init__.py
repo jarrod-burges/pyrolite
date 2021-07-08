@@ -15,6 +15,7 @@ from .sandstones import Herron, Pettijohn
 from .spinel import SpinelFeBivariate, SpinelTrivalentTernary
 from .TAS import TAS
 from .USDA_soil_texture import USDASoilTexture
+from .AIOCG import AIOCG
 
 logger = Handle(__name__)
 
