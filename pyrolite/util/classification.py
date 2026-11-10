@@ -385,35 +385,83 @@ class AIOCG(PolygonClassifier):
             albitite-hosted uranium within IOCG systems: the Southern Breccia, 
             Great Bear magmatic zone, Northwest Territories, Canada. 
             Mineralium Deposita, 50:293-325.
-            doi:`<https://doi.org/10.1007/s00126-014-0530-7>`__
+            doi:{Montreuil2013}
     """
 
     @update_docstring_references
     def __init__(self, **kwargs):
-        src = pyrolite_datafolder(subfolder="models") / "AIOCG" / "config.json"
-
+        src = (
+                pyrolite_datafolder(subfolder="models")
+                / "AIOCG"
+                / f"config.json"
+        )
         with open(src, "r") as f:
             config = json.load(f)
-        kw = dict(scale=100.0, xlim=[0, 607.4], ylim=[0, 405.2])
-        kw.update(kwargs)
-        poly_config = {**config, **kw}
-        super().__init__(**poly_config)
+        super().__init__(**{**config, **kwargs})
 
-    def add_to_axes(self, ax=None, fill=False, axes_scale=100.0, labels=None, **kwargs):
+    def predict(
+            self,
+            X: np.ndarray[tuple[int, int], np.dtype[np.number]] | pd.DataFrame,
+            data_scale= 1.0,
+    ) -> pd.Series:
+        """
+        Classify samples; point-in-polygon tests are done for each polygon field
+
+        Parameters
+        -----------
+        X : numpy.ndarray | pandas.DataFrame
+            Data to classify (wt%). Dataframes must contain the axis components.
+        data_scale : float
+            Maximum scale for the data. Typically, 100 (wt%) or 1 (fractional).
+
+        Returns
+        -------
+        pandas.Series
+            Classifier predictions; 'none' for samples outside all fields.
+        """
+        if isinstance(X, pd.DataFrame):
+            idx, X = X.index, X.loc[:, self.axis_components].to_numpy(dtype=float)
+        else:
+            X = np.asarray(X, dtype=float)
+            idx = pd.RangeIndex(X.shape[0])
+        X = X * (self.default_scale / data_scale)
+
+        classes = [k for (k, cfg) in self.fields.items() if cfg["poly"]]
+        inside = np.column_stack(
+            [
+                matplotlib.path.Path(_read_poly(self.fields[k]["poly"])).contains_points(X)
+                for k in classes
+            ]
+        )
+        out = pd.Series(np.array(classes, dtype=object)[inside.argmax(axis=1)], index=idx)
+        out[~inside.any(axis=1)] = "none"
+        return out
+
+    def add_to_axes(
+            self,
+            ax=None,
+            fill=False,
+            axes_scale=1.0,
+            add_labels=False,
+            label_at_centroid=True,
+            **kwargs
+    ) -> matplotlib.axes.Axes:
         """
         Add the AIOCG fields from the classifier to an axis.
 
         Parameters
         ----------
+        add_labels : :class:`bool`
+            Whether to add labels at polygon centroids.
         ax : :class:`matplotlib.axes.Axes`
             Axis to add the polygons to.
         fill : :class:`bool`
             Whether to fill the polygons.
         axes_scale : :class:`float`
             Maximum scale for the axes. Typically 100 (for wt%) or 1 (fractional).
-        labels : :class:`str`
-            Which labels to add to the polygons (e.g. for TAS, 'volcanic', 'intrusive'
-            or the field 'ID').
+        label_at_centroid : bool
+            Whether to label the fields at the centroid (True) or at the visual
+            center of the field (False).
 
         Returns
         --------
@@ -421,27 +469,49 @@ class AIOCG(PolygonClassifier):
         """
         # use and override the default add_to_axes
         ax = self._add_polygons_to_axes(
-            ax=ax, fill=fill, axes_scale=axes_scale, **kwargs
+            ax=ax,
+            fill=fill,
+            axes_scale=axes_scale,
+            add_labels=False,
+            **kwargs,
         )
+
+        if not label_at_centroid:
+            # Calculate the effective vertical exaggeration that
+            # produces nice positioning of labels. The true vertical
+            # exaggeration is increased by a scale_factor because
+            # the text labels are typically wider than they are long,
+            # so we want to promote the labels
+            # being placed at the widest part of the field.
+            scale_factor = 1.5
+            p = ax.transData.transform([[0.0, 0.0], [1.0, 1.0]])
+            yx_scaling = (p[1][1] - p[0][1]) / (p[1][0] - p[0][0]) * scale_factor
+
         rescale_by = 1.0
         if axes_scale is not None:  # rescale polygons to fit ax
             if not np.isclose(self.default_scale, axes_scale):
                 rescale_by = axes_scale / self.default_scale
-        if labels is not None:
+
+        if add_labels:
             for k, cfg in self.fields.items():
                 if cfg["poly"]:
-                    verts = np.array(cfg["poly"]) * rescale_by
-                    x, y = get_centroid(matplotlib.patches.Polygon(verts))
+                    verts = np.array(_read_poly(cfg["poly"])) * rescale_by
+                    _poly = matplotlib.patches.Polygon(verts)
+                    if label_at_centroid:
+                        x, y = get_centroid(_poly)
+                    else:
+                        x, y = get_visual_center(_poly, yx_scaling)
                     label = cfg["name"][0]
                     ax.annotate(
                         "\n".join(label.split()),
                         xy=(x, y),
                         ha="center",
                         va="center",
-                        **subkwargs(kwargs, ax.annotate, matplotlib.text.Text)
+                        fontsize=kwargs.get("fontsize", 8),
+                        **subkwargs(kwargs, ax.annotate),
                     )
-        ax.set_ylabel("$K/(K+Na+0.5Ca) molar$")
-        ax.set_xlabel("$(2Ca+5Fe+2Mn)+(2Ca+5Fe+2Mn+Mg+Si) molar$")
+
+
         return ax
 
 @update_docstring_references
@@ -947,4 +1017,8 @@ Pettijohn.__doc__ = Pettijohn.__doc__.format(
 )
 Herron.__doc__ = Herron.__doc__.format(
     Herron1988=sphinx_doi_link("10.1306/212F8E77-2B24-11D7-8648000102C1865D"),
+)
+
+AIOCG.__doc__ = AIOCG.__doc__.format(
+    Montreuil2013=sphinx_doi_link("10.1007/s00126-014-0530-7")
 )

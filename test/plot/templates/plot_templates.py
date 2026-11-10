@@ -14,6 +14,7 @@ from pyrolite.plot.templates import (
     USDASoilTexture,
     pearceThNbYb,
     pearceTiNbYb,
+    AIOCG
 )
 
 
@@ -95,6 +96,24 @@ class TestDiagramsGeneral(unittest.TestCase):
                 with self.subTest(diagram=diagram, a=a):
                     ax = diagram(a)
             plt.close(fig)
+
+class TestAIOCGPlot(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_AIOCG_default(self):
+        fig, axes = plt.subplots(1)
+        for ax in [None, axes]:
+            with self.subTest(ax=ax):
+                ax = AIOCG(ax)
+
+    def test_AIOCG_relim(self):
+        for relim in [True, False]:
+            with self.subTest(relim=relim):
+                ax = AIOCG(relim=relim)
+
+    def tearDown(self):
+        plt.close("all")
 
 
 if __name__ == "__main__":

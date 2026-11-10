@@ -31,4 +31,5 @@ __all__ = [
     "USDASoilTexture",
     "pearceThNbYb",
     "pearceTiNbYb",
+    "AIOCG"
 ]
