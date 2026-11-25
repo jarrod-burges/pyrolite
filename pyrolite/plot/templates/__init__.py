@@ -16,6 +16,7 @@ from .spinel import SpinelFeBivariate, SpinelTrivalentTernary
 from .TAS import TAS
 from .USDA_soil_texture import USDASoilTexture
 from .magnetite import Magnetite
+from .pearce import pearceTectonicGranites
 
 logger = Handle(__name__)
 
@@ -32,4 +33,5 @@ __all__ = [
     "pearceThNbYb",
     "pearceTiNbYb",
     "Magnetite",
+    "pearceTectonicGranites"
 ]

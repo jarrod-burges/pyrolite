@@ -58,6 +58,21 @@ pearceTiNbYb(ax=ax[1])
 
 plt.tight_layout()  # nicer spacing for axis labels
 ########################################################################################
+# pyrolite also contains the Pearce tectonic granite diagrams, used to discriminate granitic rocks
+# based on their whole-rock geochemistry. Four templates are
+# included: :func:`~pyrolite.plot.templates.pearce`
+# We can create some axes and add these templates to them:
+#
+from pyrolite.plot.templates import pearceTectonicGranites
+
+fig, ax = plt.subplots(2, 2, figsize=(10, 8))
+
+for a, model in zip(ax.flat, ["Nb_Y", "Ta_Yb", "Rb_YNb", "Rb_YbTa"]):
+    pearceTectonicGranites(ax=a, which_model=model)
+
+plt.tight_layout()  # nicer spacing for axis labels
+plt.show()
+########################################################################################
 # pyrolite also now includes some diagram templates for discrimination of sandstones
 # based on their whole-rock geochemistry (:func:`~pyrolite.plot.templates.Pettijohn`,
 # :func:`~pyrolite.plot.templates.Herron`):

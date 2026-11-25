@@ -1025,6 +1025,117 @@ class Magnetite(PolygonClassifier):
                     )
         return ax
 
+class PearceTectonicGranites(PolygonClassifier):
+    """
+    Tectonic discrimination classifier of granites from Pearce et al. (1984) [#ref_1]_.
+
+    Parameters
+    -----------
+    name : str
+        A name for the classifier model.
+    axes : list | tuple
+        Names of the axes corresponding to the polygon coordinates.
+    fields : dict
+        Dictionary describing indiviudal polygons, with identifiers as keys and
+        dictionaries containing 'name' and 'fields' items.
+    scale : float
+        Default maximum scale for the axes. Typically 1000 (ppm) or 1 (fractional).
+    xlim : tuple
+        Default x-limits for this classifier for plotting.
+    ylim : tuple
+        Default y-limits for this classifier for plotting.
+    which_model : str
+        The name of the model variant to use (i.e., Nb-Y, Ta-Yb, Rb-YNb, Rb-YbTa).
+
+    References
+    -----------
+    .. [#ref_1] Pearce, J.A., Harris, N.B.W., and Tindle, A.G., 1984, Trace Element Discrimination Diagrams
+        for the Tectonic Interpretation of Granitic Rocks: Journal of Petrology, v. 25, p. 956–983
+        doi: {pearce1984}
+    """
+    models = ("Nb_Y", "Ta_Yb", "Rb_YNb", "Rb_YbTa")
+
+    def __init__(self, which_model: str | None = None, **kwargs):
+        which_model = which_model or self.models[0]
+        if which_model not in self.models:
+            raise ValueError(
+                f"{which_model} is not a valid model; choose from {', '.join(self.models)}"
+            )
+        src = (
+                pyrolite_datafolder(subfolder="models")
+                / "Pearce"
+                / f"config_{which_model}.json"
+        )
+        with open(src, "r") as f:
+            config = json.load(f)
+        super().__init__(**{**config, **kwargs})
+
+    def add_to_axes(
+        self,
+        ax: matplotlib.axes.Axes | None = None,
+        fill: bool = False,
+        axes_scale: float = 1.0,
+        add_labels: bool = False,
+        which_labels: str = "ID",
+        which_ids: list[str] | None = None,
+        **kwargs,
+    ) -> matplotlib.axes.Axes:
+        """
+        Add the tectonic fields from the classifier to an axis.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            Axis to add the polygons to.
+        fill : bool
+            Whether to fill the polygons.
+        axes_scale : float
+            Maximum scale for the axes. Typically 100 (for wt%) or 1 (fractional).
+        add_labels : bool
+            Whether to add labels at the (log-space) polygon centroids.
+        which_labels : str
+            Which data to use for field labels - field 'name' or 'ID'.
+        which_ids : list
+            List of field IDs corresponding to the polygons to add to the axes object.
+
+        Returns
+        --------
+        ax : matplotlib.axes.Axes
+        """
+        # use and override the default add_to_axes
+        # here we don't want to add the labels in the normal way, because there
+        # are two sets - one for volcanic rocks and one for plutonic rocks
+        ax = self._add_polygons_to_axes(
+            ax=ax,
+            fill=fill,
+            axes_scale=axes_scale,
+            add_labels=False,
+            which_ids=which_ids,
+            xscale='log',
+            yscale='log',
+            **kwargs,
+        )
+
+        if add_labels:
+            rescale_by = axes_scale / self.default_scale
+            use_keys = not which_labels.lower().startswith("name")
+            for k, cfg in self.fields.items():
+                if cfg["poly"] and (which_ids is None or k in which_ids):
+                    label = k if use_keys else cfg["name"][0]
+                    verts = np.log10(np.array(_read_poly(cfg["poly"])) * rescale_by)
+                    x, y = 10 ** np.array(get_centroid(matplotlib.patches.Polygon(verts)))
+                    ax.annotate(
+                        "\n".join(label.split()),
+                        xy=(x, y),
+                        ha="center",
+                        va="center",
+                        fontsize=kwargs.get("fontsize", 8),
+                        **subkwargs(kwargs, ax.annotate),
+                    )
+
+        return ax
+
+
 TAS.__doc__ = TAS.__doc__.format(
     LeBas1992=sphinx_doi_link("10.1007/BF01160698"),
     Middlemost1994=sphinx_doi_link("10.1016/0012-8252(94)90029-9"),
@@ -1047,4 +1158,7 @@ Magnetite.__doc__ = Magnetite.__doc__.format(
     DupuisBeaudoin2011=sphinx_doi_link("10.1007/s00126-011-0334-y"),
     Nadoll2011="{hdl} <https://hdl.handle.net/2292/7512>__",
     Nadoll2014=sphinx_doi_link("10.1016/j.oregeorev.2013.12.013")
+)
+PearceTectonicGranites.__doc__ = PearceTectonicGranites.__doc__.format(
+    pearce1984=sphinx_doi_link("10.1093/petrology/25.4.956")
 )

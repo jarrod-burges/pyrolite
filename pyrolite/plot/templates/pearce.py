@@ -3,9 +3,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from ...geochem.norm import get_reference_composition
+from ...util.classification import PearceTectonicGranites as PearceTectonicGranitesClassifier
 from ...util.log import Handle
 from ...util.meta import sphinx_doi_link, subkwargs, update_docstring_references
 from .components import GeometryCollection, Linear2D, LogLinear2D, Point
+from ...util.plot.axes import init_axes
 
 logger = Handle(__name__)
 
@@ -152,10 +154,65 @@ def pearceTiNbYb(
         ax.set_ylim(ylim)
     return ax
 
+@update_docstring_references
+def pearceTectonicGranites(
+    ax: matplotlib.axes.Axes | None = None,
+    relim: bool = True,
+    color: str = "k",
+    add_labels: bool = True,
+    which_model: str = "",
+    **kwargs,
+) -> matplotlib.axes.Axes:
+    """
+    Adds the Rb/Y+Nb granite discrimination lines from Pearce et al. (1984) [#ref_1]_
+    to an axes.
+
+    Parameters
+    ----------
+
+    ax : matplotlib.axes.Axes
+        Axes to add the template onto.
+    relim : bool
+        Whether to relimit axes to fit the built in ranges for this diagram.
+    color : str
+        Line color for the diagram.
+    add_labels : bool
+        Whether to add labels at polygon centroids.
+    which_model : str
+        The name of the model variant to use (i.e., Nb-Y, Ta-Yb, Rb-YNb, Rb-YbTa).
+
+    References
+    -----------
+    .. [#ref_1] Pearce, J.A., Harris, N.B.W., and Tindle, A.G., 1984, Trace Element Discrimination Diagrams
+        for the Tectonic Interpretation of Granitic Rocks: Journal of Petrology, v. 25, p. 956–983
+        doi: {pearce1984}
+
+    Returns
+    -------
+    ax : matplotlib.axes.Axes
+
+    """
+
+    ax = init_axes(ax=ax, xscale='log', yscale='log', **kwargs)
+
+    clf = PearceTectonicGranitesClassifier(which_model=which_model)
+    ax = clf.add_to_axes(
+        ax=ax, color=color, add_labels=add_labels, **kwargs
+    )
+
+    if relim:
+        ax.set(xlim=clf.lims["xlim"], ylim=clf.lims["ylim"])
+    return ax
+
+
 
 pearceThNbYb.__doc__ = pearceThNbYb.__doc__.format(
     pearce2008=sphinx_doi_link("10.1016/j.lithos.2007.06.016")
 )
 pearceTiNbYb__doc__ = pearceTiNbYb.__doc__.format(
     pearce2008=sphinx_doi_link("10.1016/j.lithos.2007.06.016")
+)
+
+pearceRbYNb__doc__ = pearceTectonicGranites.__doc__.format(
+    pearce1984=sphinx_doi_link("10.1093/petrology/25.4.956")
 )
