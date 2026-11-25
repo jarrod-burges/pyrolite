@@ -1115,6 +1115,11 @@ class PearceTectonicGranites(PolygonClassifier):
             yscale='log',
             **kwargs,
         )
+        ax.set(
+            xscale="log",
+            yscale="log",
+            **{f"{a}label": var for a, var in self.axes.items()},
+        )
 
         if add_labels:
             rescale_by = axes_scale / self.default_scale
